@@ -51,11 +51,11 @@
 
     <script>
         // --- QUAN TRỌNG: HÃY ĐIỀN THÔNG TIN CỦA BẠN VÀO ĐÂY ---
-        const CHANNEL_ID = 3053059; // THAY BẰNG CHANNEL ID CỦA BẠN
+        const CHANNEL_ID = 1234567; // THAY BẰNG CHANNEL ID CỦA BẠN
         
         // **LƯU Ý:** Nếu kênh ThingSpeak của bạn là PUBLIC, hãy để READ_API_KEY là chuỗi rỗng ('').
         // Nếu kênh là PRIVATE, bạn phải điền READ API KEY vào đây.
-        const READ_API_KEY = '48VUVUP6JI5Y6KL8'; // THAY BẰNG READ API KEY (nếu cần)
+        const READ_API_KEY = ''; // THAY BẰNG READ API KEY (nếu cần)
         
         const RESULTS_COUNT = 30; // Số lượng kết quả gần nhất để vẽ biểu đồ
         // -----------------------------------------------------------------
@@ -65,7 +65,54 @@
         const lastUpdatedElement = document.getElementById('last-updated');
         const ctx = document.getElementById('weatherChart').getContext('2d');
 
-        const weatherChart = new Chart(ctx, { /* ... code biểu đồ giữ nguyên ... */ });
+        // --- SỬA LỖI: Bổ sung cấu hình chi tiết cho biểu đồ ---
+        const weatherChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Thời gian
+                datasets: [
+                    {
+                        label: 'Nhiệt độ (°C)',
+                        data: [],
+                        borderColor: 'rgba(249, 115, 22, 0.8)',
+                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                        yAxisID: 'yTemp',
+                        tension: 0.3,
+                        fill: true,
+                    },
+                    {
+                        label: 'Độ ẩm (%)',
+                        data: [],
+                        borderColor: 'rgba(59, 130, 246, 0.8)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        yAxisID: 'yHumidity',
+                        tension: 0.3,
+                        fill: true,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Thời gian' }
+                    },
+                    yTemp: {
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: 'Nhiệt độ (°C)' },
+                        grid: {
+                           drawOnChartArea: false,
+                        },
+                    },
+                    yHumidity: {
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: 'Độ ẩm (%)' }
+                    }
+                }
+            }
+        });
 
         async function fetchData() {
             let url = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?results=${RESULTS_COUNT}`;
