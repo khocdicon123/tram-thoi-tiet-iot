@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trạm Thời Tiết IoT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-700">Trạm Theo Dõi Thời Tiết IoT</h1>
+            <p class="text-lg text-gray-500 mt-2">Dữ liệu được cập nhật tự động từ cảm biến</p>
+        </header>
+
+        <!-- Current Data Display -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Temperature Card -->
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-600">Nhiệt độ hiện tại</h2>
+                    <p id="current-temp" class="text-5xl font-bold text-orange-500 mt-2">--.- °C</p>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6.364 1.636l-.707.707M12 20v1m-6.364-1.636l.707-.707M4 12H3m1-6.364l.707.707M20 12h1m-1 6.364l-.707-.707M12 6a6 6 0 100 12 6 6 0 000-12z" /></svg>
+            </div>
+            <!-- Humidity Card -->
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-600">Độ ẩm hiện tại</h2>
+                    <p id="current-humidity" class="text-5xl font-bold text-blue-500 mt-2">-- %</p>
+                </div>
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" /></svg>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Biểu Đồ Theo Dõi</h2>
+            <canvas id="weatherChart"></canvas>
+        </div>
+         <footer class="text-center mt-8 text-gray-500">
+            <p>Cập nhật lần cuối: <span id="last-updated">Chưa có dữ liệu</span></p>
+        </footer>
+    </div>
+
+    <script>
+        // --- QUAN TRỌNG: HÃY ĐIỀN THÔNG TIN CỦA BẠN VÀO ĐÂY ---
+        const CHANNEL_ID = 1234567; // THAY BẰNG CHANNEL ID CỦA BẠN
+        
+        // **LƯU Ý:** Nếu kênh ThingSpeak của bạn là PUBLIC, hãy để READ_API_KEY là chuỗi rỗng ('').
+        // Nếu kênh là PRIVATE, bạn phải điền READ API KEY vào đây.
+        const READ_API_KEY = ''; // THAY BẰNG READ API KEY (nếu cần)
+        
+        const RESULTS_COUNT = 30; // Số lượng kết quả gần nhất để vẽ biểu đồ
+        // -----------------------------------------------------------------
+
+        const tempElement = document.getElementById('current-temp');
+        const humidityElement = document.getElementById('current-humidity');
+        const lastUpdatedElement = document.getElementById('last-updated');
+        const ctx = document.getElementById('weatherChart').getContext('2d');
+
+        const weatherChart = new Chart(ctx, { /* ... code biểu đồ giữ nguyên ... */ });
+
+        async function fetchData() {
+            let url = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?results=${RESULTS_COUNT}`;
+            if (READ_API_KEY) {
+                url += `&api_key=${READ_API_KEY}`;
+            }
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Lỗi mạng: ${response.status}`);
+                const data = await response.json();
+                const feeds = data.feeds;
+
+                if (feeds && feeds.length > 0) {
+                    const lastEntry = feeds[feeds.length - 1];
+                    tempElement.textContent = `${parseFloat(lastEntry.field1).toFixed(1)} °C`;
+                    humidityElement.textContent = `${parseFloat(lastEntry.field2).toFixed(0)} %`;
+                    lastUpdatedElement.textContent = new Date(lastEntry.created_at).toLocaleString('vi-VN');
+
+                    const labels = feeds.map(feed => new Date(feed.created_at).toLocaleTimeString('vi-VN'));
+                    const tempData = feeds.map(feed => parseFloat(feed.field1));
+                    const humidityData = feeds.map(feed => parseFloat(feed.field2));
+
+                    weatherChart.data.labels = labels;
+                    weatherChart.data.datasets[0].data = tempData;
+                    weatherChart.data.datasets[1].data = humidityData;
+                    weatherChart.update();
+                }
+
+            } catch (error) {
+                console.error("Không thể lấy dữ liệu từ ThingSpeak:", error);
+                lastUpdatedElement.textContent = "Lỗi khi tải dữ liệu.";
+            }
+        }
+
+        setInterval(fetchData, 20000); // Tự động cập nhật mỗi 20 giây
+        fetchData(); // Chạy lần đầu
+    </script>
+</body>
+</html>
+
